@@ -2,12 +2,15 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <unistd.h>
 #include <alsa/asoundlib.h>
 #include <alsa/mixer.h>
 
+#define MASTER_SELEM_NAME "Master"
+#define SPEAKER_SELEM_NAME "Speaker"
+
 #define DEF_CARD_NAME "default"
-#define DEF_SELEM_NAME "Master"
+#define DEF_SELEM_NAME MASTER_SELEM_NAME
 #define DEF_CHG_STEP 5
 
 
@@ -17,7 +20,7 @@ Usage :\n\
 \t-n - decrement sound by n .\
 \t=n - set sound to n .\
 "
-static const struct option longOpts[] = {
+static const struct option long_opts[] = {
     { "increment", optional_argument, NULL, 'i' },
     { "decrement", optional_argument, NULL, 'd' },
     { "set", optional_argument, NULL, 's' },
@@ -37,11 +40,11 @@ int inc_mod = 1; // -1 for decrement
 int verbose = 0;
 int is_mute = 0;
 int usage   = 0;
-long value  = 0;
 
 void get_volume_min_max(const char *card, const char *selem_name, long *min, long *max);
 int set_volume_level(const long volume, const char *card, const char *selem_name);
 long get_volume_level(const char *card, const char *selem_name, long *volume);
+void toggle_mute(const char *card, const char *selem_name);
 
 int main(int argc, char * const *argv) {
   /* code */
@@ -53,7 +56,7 @@ int main(int argc, char * const *argv) {
   volume = get_volume_level(card_name, selem_name, &volume);
   volume = volume * 100 / max;
   int opt, step;
-  while((opt = getopt_long(argc, argv, "i::d::s::mvh", longOpts, &opt)) != -1) {
+  while((opt = getopt_long(argc, argv, "i::d::s::mvh", long_opts, &opt)) != -1) {
     switch (opt) {
       case 'i':
         inc_mod = 1;
@@ -82,7 +85,7 @@ int main(int argc, char * const *argv) {
         break;
       case 'm':
         //toggle mute
-        
+        is_mute = 1;
         break;
       case 'v':
         verbose = 1;
@@ -96,6 +99,11 @@ int main(int argc, char * const *argv) {
 
   if (usage) {
     puts(USAGE);
+    return 0;
+  }
+
+  if (is_mute) {
+    toggle_mute(card_name, selem_name);
     return 0;
   }
   if (verbose) {
@@ -113,12 +121,11 @@ int main(int argc, char * const *argv) {
   }
 
   //set new sound level;
-  set_volume_level(volume * max / 100, DEF_CARD_NAME, DEF_SELEM_NAME);
+  set_volume_level(volume * max / 100, card_name, selem_name);
   return 0;
 }
 
 int set_volume_level(const long volume, const char *card, const char *selem_name){
-  long min, max;
   snd_mixer_t *handle;
   snd_mixer_selem_id_t *sid;
 
@@ -171,5 +178,41 @@ void get_volume_min_max(const char *card, const char *selem_name, long *min, lon
 
   snd_mixer_selem_get_playback_volume_range(elem, min, max);
 
+  snd_mixer_close(handle);
+}
+void toggle_mute(const char *card, const char *selem_name) {
+  int left, right;
+  int has_left = 1, has_right = 1;
+  snd_mixer_t *handle;
+  snd_mixer_selem_id_t *sid;
+
+  snd_mixer_open(&handle, 0);
+  snd_mixer_attach(handle, card);
+  snd_mixer_selem_register(handle, NULL, NULL);
+  snd_mixer_load(handle);
+
+  snd_mixer_selem_id_alloca(&sid);
+  snd_mixer_selem_id_set_index(sid, 0);
+  snd_mixer_selem_id_set_name(sid, selem_name);
+  snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
+
+  if (snd_mixer_selem_get_playback_switch(elem, SND_MIXER_SCHN_FRONT_LEFT, &left) < 0) {
+    has_left = 0;
+  }
+
+  if (snd_mixer_selem_get_playback_switch(elem, SND_MIXER_SCHN_FRONT_RIGHT, &right) < 0) {
+    has_right = 0;
+  }
+
+  if ((!left || !right) && strcmp(selem_name, MASTER_SELEM_NAME) == 0) {
+    toggle_mute(card, SPEAKER_SELEM_NAME);
+    puts("toggle speaker");
+  }
+  if (has_left) {
+    snd_mixer_selem_set_playback_switch(elem, SND_MIXER_SCHN_FRONT_LEFT, !left);
+  }
+  if (has_right) {
+    snd_mixer_selem_set_playback_switch(elem, SND_MIXER_SCHN_FRONT_RIGHT, !right);
+  }
   snd_mixer_close(handle);
 }
