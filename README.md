@@ -1,6 +1,6 @@
-#i3wm Volume Control
+# i3wm Volume Control
 
-##Usage :
+## Usage :
 ```
   -i [n], --increment [n] - increment volume by n .
   -d [n], --decrement [n] - decrement volume by n .
@@ -9,15 +9,16 @@
   -v --verbose - explain what is being done .
   -h --help - display this help and exit .
 ```
-##Build :
+## Build :
 ```bash
 $>make all
 ```
 
-##Install :
+## Install :
+```bash
 $>sudo cp -v i3-volume-control /usr[/local]/bin
-
-#Configuration :
+```
+## Configuration :
 This is an example of key bindings in the i3config file, open ~/.config/i3/config with your favorite Editor, and add the following.
 
 ```
