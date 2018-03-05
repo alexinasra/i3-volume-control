@@ -15,10 +15,14 @@
 
 
 #define USAGE "\
+i3-volume-control v0.1\n\
 Usage :\n\
-\t+n - increment sound by n .\n\
-\t-n - decrement sound by n .\
-\t=n - set sound to n .\
+\t-i [n], --increment [n] - increment volume by n .\n\
+\t-d [n], --decrement [n] - decrement volume by n .\n\
+\t-s [n] --set [n] - set volume to n .\n\
+\t-m --mute - toggle mute .\n\
+\t-v --verbose - explain what is being done .\n\
+\t-h --help - display this help and exit .\n\
 "
 static const struct option long_opts[] = {
     { "increment", optional_argument, NULL, 'i' },
